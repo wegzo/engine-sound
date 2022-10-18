@@ -3,8 +3,7 @@
 #include "wave.h"
 #include "simulators.h"
 
-constexpr SimT pipeLength = 10.0f;
-constexpr SimT pipeRadius = 0.025f;
+constexpr SimT pipeRadius = 0.025;
 
 // contains the simulators of different parts of the engine simulation;
 // runs the simulators in correct order to preserve causality of different parts of the simulation;
@@ -15,6 +14,9 @@ public:
     const SimT samplingRate;
     Wave outWave;
 
+    Cylinder cylinder;
+    Pipe pipe;
+
     Simulation(const SimT samplingRate);
 
     // amount of samples to be processed;
@@ -23,6 +25,4 @@ public:
 
 private:
     SimT oldSampleCount = 0;
-    Cylinder cylinder;
-    Pipe pipe;
 };

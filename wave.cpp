@@ -24,17 +24,22 @@ Wave::Wave(const Simulation& simulation,
 
 SimT Wave::getSampleDuration() const
 {
-    return 1.f / this->simulation->samplingRate;
+    return 1.0 / this->simulation->samplingRate;
 }
 
 SimT Wave::getLength() const
 {
-    return this->samples.size() * waveSpeed * this->getSampleDuration();
+    return getLength(this->samples.size(), this->getSampleDuration());
+}
+
+SimT Wave::getLength(const size_t sampleCount, const SimT sampleDuration)
+{
+    return sampleCount * waveSpeed * sampleDuration;
 }
 
 void Wave::moveByDuration(const SimT duration)
 {
-    const SimT moveFactor = this->leftToRightDirection ? 1.f : -1.f;
+    const SimT moveFactor = this->leftToRightDirection ? 1.0 : -1.0;
     this->position += moveFactor * waveSpeed * duration;
 }
 

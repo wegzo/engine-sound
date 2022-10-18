@@ -11,31 +11,59 @@
 Cylinder::Cylinder(Simulation& simulation) : 
     currentOutWave(simulation),
     simulation(simulation)
-{}
-
-void Cylinder::progressSimulation(const SimT oldSampleCount, const SimT newSampleCount)
 {
-    // half a second of linear smoothing at the beginning so that audio artifacts don't occur
-    const SimT smoothingDuration = 0.5f / this->currentOutWave.getSampleDuration();
+}
 
+void Cylinder::start()
+{
+    this->running = true;
+}
+
+void Cylinder::stop()
+{
+    this->running = false;
+}
+
+void Cylinder::restart()
+{
+    this->_restart = true;
+}
+
+void Cylinder::progressSimulation(SimT oldSampleCount, SimT newSampleCount)
+{
+    if(!this->running || this->_restart)
+    {
+        this->sampleCountStartPosition = oldSampleCount;
+        this->_restart = false;
+    }
+    else if(this->running)
+    {
+        this->sampleCountStopPosition = oldSampleCount;
+    }
+
+    const SimT smoothingDuration = 0.1 / this->currentOutWave.getSampleDuration();
     const int sampleCount = static_cast<int>(newSampleCount - oldSampleCount);
+
     this->currentOutWave.samples.clear();
 
     for(int i = 0; i < sampleCount; i++)
     {
+        this->counter += (this->frequency * 2 * std::numbers::pi) / this->simulation.samplingRate;
+
         // avg peak sound pressure level amplitude in conversations
         constexpr SimT conversationAmplitude = 0.02f;
 
-        SimT val = std::sin((oldSampleCount + i) / 38.9f) * conversationAmplitude;
+        SimT val = std::sin(this->counter) * conversationAmplitude;
 
-        if(oldSampleCount + i < smoothingDuration)
-            val *= (oldSampleCount + i) / smoothingDuration;
-
-        val += atmosphericPressure;
+        // start&stop linear smoothing
+        if(this->running && oldSampleCount - this->sampleCountStartPosition + i < smoothingDuration)
+            val *= (oldSampleCount - this->sampleCountStartPosition + i) / smoothingDuration;
+        else if(!this->running && oldSampleCount - this->sampleCountStopPosition + i < smoothingDuration)
+            val *= 1.0 - (oldSampleCount - this->sampleCountStopPosition + i) / smoothingDuration;
+        else if(!this->running)
+            val = 0.0;
 
         this->currentOutWave.samples.push_back(val);
-
-        /*std::cout << val << std::endl;*/
     }
 }
 
@@ -47,20 +75,22 @@ void Cylinder::progressSimulation(const SimT oldSampleCount, const SimT newSampl
 
 Pipe::Pipe(Simulation& simulation, Cylinder& cylinder,
     const SimT pipeRadius, const SimT pipeLengthPhysical) :
-    pipeLength(pipeLengthPhysical + endCorrectionFactor * pipeRadius),
-    pipeLengthPhysical(pipeLengthPhysical),
-    pipeRadius(pipeRadius),
-    pipeCrossSectionalArea(static_cast<SimT>(std::numbers::pi)* pipeRadius* pipeRadius),
     simulation(simulation),
-    cylinder(cylinder)
+    cylinder(cylinder),
+    pipeRadius(pipeRadius),
+    pipeCrossSectionalArea(static_cast<SimT>(std::numbers::pi)* pipeRadius* pipeRadius)
 {
+    assert(pipeLengthPhysical > 0.0);
+    assert(this->pipeRadius > 0.0);
+
+    this->setPipePhysicalLengthAndReset(pipeLengthPhysical);
 }
 
 Wave Pipe::sumRadiatedWaves(const size_t sampleCount) const
 {
     Wave sumWave{this->simulation, 
         Wave::SampleContainer {sampleCount, 
-        atmosphericPressure, Wave::SampleContainer::allocator_type()}};
+        0.0, Wave::SampleContainer::allocator_type()}};
 
     assert(this->radiatedSampleCount <= sampleCount);
 
@@ -72,6 +102,8 @@ Wave Pipe::sumRadiatedWaves(const size_t sampleCount) const
             sumWave.samples[requestedGeneratedSampleCountDiff + i] += wave.samples[i];
         }
     }
+
+    /*std::cout << this->radiatedWaves.size() << std::endl;*/
 
     return sumWave;
 }
@@ -89,16 +121,16 @@ void Pipe::progressSimulation(
     Wave newInWave = this->cylinder.currentOutWave;
     this->addPipeWave(std::move(newInWave), this->pipeWaves.begin());
 
-    // single waves longer than pipe length * 2 are not yet supported;
-    // TODO: implement it
-    {
-        const SimT waveLength = this->pipeWaves.begin()->getLength();
-        assert(waveLength <= this->pipeLength * 2);
-    }
-
     // handle the pipe exit wave interactions
-    for(auto it = this->pipeWaves.begin(); it != this->pipeWaves.end(); it++)
-        this->progressPipeWave(it);
+    {
+        size_t i = 0;
+        for(auto it = this->pipeWaves.begin();
+            it != this->pipeWaves.end() && i < this->echoIterations;
+            it++, i++)
+        {
+            this->progressPipeWave(it);
+        }
+    }
 
     // remove old pipe waves that have negligible pressure variations
     this->prunePipeWaves();
@@ -114,8 +146,8 @@ void Pipe::progressPipeWave(const std::list<Wave>::iterator waveIt)
         const size_t sampleCount = waveIt->getSampleCountForLength(
             waveIt->position + waveIt->getLength() - this->pipeLength);
 
-        // there has to be three or more samples so that the rates of change can be calculated
-        // (velocity and acceleration)
+        // there has to be two or more samples so that the rate of change can be calculated
+        // (velocity)
         if(sampleCount >= 2)
         {
             const Wave waveToBePartiallyReflected =
@@ -152,8 +184,8 @@ void Pipe::prunePipeWaves()
 
     // TODO: probably the sound wave needs to lose its energy when it bounces in the pipe
 
-    // for now, just remove pipe waves older than 10 iterations
-    while(this->pipeWaves.size() > 20)
+    // for now, just remove pipe waves older than 20 iterations
+    while(this->pipeWaves.size() > this->echoIterations)
         this->pipeWaves.pop_back();
 }
 
@@ -161,24 +193,27 @@ std::pair<Wave, Wave> Pipe::splitToRadiatedAndReflectedWaves(const Wave& wave) c
 {
     assert(wave.getSampleCount() >= 2);
 
-    Wave radiatedWave{this->simulation, {wave.samples.begin(), wave.samples.end() - 1}};
-    Wave reflectedWave{this->simulation, {wave.samples.begin(), wave.samples.end() - 1}, false};
+    Wave radiatedWave{this->simulation, Wave::SampleContainer {wave.getSampleCount() - 1,
+        Wave::SampleContainer::allocator_type()}};
+    Wave reflectedWave{this->simulation, Wave::SampleContainer {wave.getSampleCount() - 1,
+        Wave::SampleContainer::allocator_type()}, false};
 
     // a change in the pressure of the wave is an approximation of the flow at the end of the
     // open pipe
 
-    for(size_t i = 0; i < wave.samples.size() - 1; i++)
+    for(size_t i = 0; i < wave.getSampleCount() - 1; i++)
     {
         const SimT pressure1 = wave.samples[i];
         const SimT pressure2 = wave.samples[i + 1];
 
         // dP = -γ P dy / dt, where γ is the adiabatic factor
         // <=> dy / dt = dP / (-γ P)
-        const SimT flowVelocity =
+        /*const SimT flowVelocity =
             ((pressure2 - pressure1) / (-airAdiabaticFactor * pressure1)) /
-            wave.getSampleDuration();
+            wave.getSampleDuration();*/
+        // F = ma <=> a = F/m
         const SimT flowAcceleration = (pressure2 - pressure1) / -airDensity;
-        const SimT volumeFlow = this->pipeCrossSectionalArea * flowVelocity;
+        /*const SimT volumeFlow = this->pipeCrossSectionalArea * flowVelocity;*/
 
         // F = ma
         // F = air density * A * L * flowAcceleration
@@ -186,18 +221,12 @@ std::pair<Wave, Wave> Pipe::splitToRadiatedAndReflectedWaves(const Wave& wave) c
         // p = (air density * A * L * flowAcceleration) / A <=>
         // p = air density * L * flowAcceleration
         // Zrad = p/U = (air density * L * flowAcceleration) / volumeFlow
-        SimT radiationImpedance =
-            (airDensity * endCorrectionFactor * this->pipeRadius * flowAcceleration)
-            / 
-            volumeFlow;
-        if(!std::isnormal(radiationImpedance))
-            radiationImpedance = 0.0f;
+        // radP = Zrad*U
 
         // p> + p< = prad
-        const SimT radiationPressure = radiationImpedance * volumeFlow;
+        const SimT radiationPressure = 
+            airDensity * endCorrectionFactor * this->pipeRadius * flowAcceleration;
         const SimT reflectionPressure = radiationPressure - pressure1;
-
-        // note: radiation pressure is relative to atmospheric pressure
 
         radiatedWave.samples[i] = radiationPressure;
         reflectedWave.samples[i] = reflectionPressure;
@@ -226,4 +255,28 @@ void Pipe::addPipeWave(Wave&& pipeWave, const std::list<Wave>::iterator pos)
         assert(pos->position == pipeWave.position);
         *pos += pipeWave;
     }
+}
+
+void Pipe::reset()
+{
+    this->clearRadiatedWaves();
+    this->pipeWaves.clear();
+}
+
+void Pipe::setEchoIterationsAndReset(const size_t echoIterations)
+{
+    this->echoIterations = echoIterations;
+    this->reset();
+}
+
+void Pipe::setPipePhysicalLengthAndReset(const SimT pipeLengthPhysical)
+{
+    assert(pipeLengthPhysical > 0.0);
+
+    this->userPipeLengthPhysical = pipeLengthPhysical;
+    this->pipeLengthPhysical = 
+        this->userPipeLengthPhysical - Wave::getLength(1, 1.0 / this->simulation.samplingRate);
+    this->pipeLength = this->pipeLengthPhysical + endCorrectionFactor * this->pipeRadius;
+
+    this->reset();
 }

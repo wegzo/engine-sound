@@ -6,7 +6,7 @@ Simulation::Simulation(const SimT samplingRate) :
     samplingRate(samplingRate), 
     outWave(*this),
     cylinder(*this),
-    pipe(*this, this->cylinder, pipeRadius, pipeLength)
+    pipe(*this, this->cylinder, pipeRadius, Pipe::startPipeLengthPhysicalCm / 100.0)
 {
 }
 
@@ -22,8 +22,8 @@ const Wave& Simulation::progressSimulation(const SimT sampleCountProgress)
 
     /*this->outWave = this->cylinder.currentOutWave;*/
 
-    /*system("cls");
-    this->outWave.print();*/
+    /*system("cls");*/
+    /*this->outWave.print();*/
 
     this->oldSampleCount = newSampleCount;
 

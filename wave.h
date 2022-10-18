@@ -5,7 +5,7 @@
 class Simulation;
 using SimT = double;
 
-constexpr SimT waveSpeed = 343.0f; // speed of sound in air
+constexpr SimT waveSpeed = 343.0; // speed of sound in air
 
 class Wave
 {
@@ -14,11 +14,12 @@ public:
 public:
     // collection of sound pressure samples;
     // duration of a single sample is 1/samplingRate;
-    // samples are continuous
+    // samples are continuous;
+    // denotes the difference to atmospheric pressure
     SampleContainer samples;
 
     // position of the newest(last) sample
-    SimT position = 0.0f;
+    SimT position = 0.0;
     bool leftToRightDirection;
 
     Wave(const Simulation& simulation, 
@@ -29,9 +30,11 @@ public:
         const bool leftToRightDirection = true);
 
     SimT getLength() const;
+    static SimT getLength(const size_t sampleCount, const SimT sampleDuration);
     SimT getSampleDuration() const;
     size_t getSampleCount() const {
-        return this->samples.size();
+        // empty() is checked first because it's guaranteed to be true if the vector has been moved
+        return this->samples.empty() ? 0 : this->samples.size();
     }
 
     void moveByDuration(const SimT duration);
