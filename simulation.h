@@ -3,8 +3,6 @@
 #include "wave.h"
 #include "simulators.h"
 
-constexpr SimT pipeRadius = 0.025;
-
 // contains the simulators of different parts of the engine simulation;
 // runs the simulators in correct order to preserve causality of different parts of the simulation;
 // SI units are used

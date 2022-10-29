@@ -5,7 +5,7 @@
 
 class Simulation;
 
-//constexpr SimT atmosphericPressure = 101325.0;
+constexpr SimT atmPressure = 101325.0;
 constexpr SimT airDensity = 1.2;
 constexpr SimT airAdiabaticFactor = 1.4;
 constexpr SimT endCorrectionFactor = 0.6;
@@ -51,17 +51,19 @@ class Pipe
 public:
     static constexpr size_t startEchoIterations = 10;
     static constexpr int startPipeLengthPhysicalCm = 20;
+    static constexpr SimT startPipeRadiusCm = 1;
 public:
     std::vector<Wave> radiatedWaves;
     std::list<Wave> pipeWaves; // list used for lax iterator invalidation rules
 
-    Pipe(Simulation& simulation, Cylinder& cylinder, 
-        const SimT pipeRadius, const SimT pipeLengthPhysical);
+    Pipe(Simulation& simulation, Cylinder& cylinder);
 
     void setEchoIterationsAndReset(const size_t echoIterations);
     size_t getEchoIterations() const { return this->echoIterations; }
     void setPipePhysicalLengthAndReset(const SimT pipeLengthPhysical);
     SimT getPipePhysicalLength() const { return this->userPipeLengthPhysical; }
+    void setPipeRadiusAndReset(const SimT pipeRadius);
+    SimT getPipeRadius() const { return this->pipeRadius; }
 
     // sums radiated waves with atmospheric pressure
     Wave sumRadiatedWaves(const size_t sampleCount) const;
@@ -78,8 +80,8 @@ private:
     SimT userPipeLengthPhysical;
     SimT pipeLengthPhysical;
     SimT pipeLength;
-    const SimT pipeRadius;
-    const SimT pipeCrossSectionalArea;
+    SimT pipeRadius;
+    SimT pipeCrossSectionalArea;
 
     void progressPipeWave(const std::list<Wave>::iterator waveIt);
     void prunePipeWaves();

@@ -6,7 +6,7 @@ Simulation::Simulation(const SimT samplingRate) :
     samplingRate(samplingRate), 
     outWave(*this),
     cylinder(*this),
-    pipe(*this, this->cylinder, pipeRadius, Pipe::startPipeLengthPhysicalCm / 100.0)
+    pipe(*this, this->cylinder)
 {
 }
 

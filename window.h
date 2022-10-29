@@ -23,26 +23,31 @@ public:
 
         COMMAND_HANDLER(IDC_INPUTFREQEDIT, EN_CHANGE, OnEnChangeInputfreqedit)
         COMMAND_HANDLER(IDC_ECHOITERATIONSEDIT, EN_CHANGE, OnEnChangeEchoiterationsedit)
+        COMMAND_HANDLER(IDC_PIPELENGTHEDIT, EN_CHANGE, OnEnChangePipelengthedit)
+        COMMAND_HANDLER(IDC_PIPERADIUSEDIT2, EN_CHANGE, OnEnChangePiperadiusedit2)
     END_MSG_MAP()
 
     LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-    LRESULT OnTrackBarScroll(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+    LRESULT OnTrackBarScroll(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/);
     LRESULT OnBnClickedStartbutton(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
     LRESULT OnBnClickedStopbutton(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
     LRESULT OnEnChangeInputfreqedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
     LRESULT OnEnChangeEchoiterationsedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+    LRESULT OnEnChangePipelengthedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+    LRESULT OnEnChangePiperadiusedit2(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
     void startAudioRenderAndSimulationThread();
     void stopAudioRenderAndSimulationThread();
 
 private:
     CButton startButton, stopButton;
-    CTrackBarCtrl inputSoundFreqSlider, echoIterationsSlider, pipeLengthSlider;
-    CEdit inputSoundFreqEdit, echoIterationsEdit, pipeLengthEdit;
+    CTrackBarCtrl inputSoundFreqSlider, echoIterationsSlider, pipeLengthSlider, pipeRadiusSlider;
+    CEdit inputSoundFreqEdit, echoIterationsEdit, pipeLengthEdit, pipeRadiusEdit;
 
     void setInputSoundFreqPos(const int newSliderPos, const bool updateText = true);
     void setEchoIterationsPos(const int newSliderPos, const bool updateText = true);
     void setPipeLengthPos(const int newSliderPos, const bool updateText = true);
+    void setPipeRadiusPos(const int newSliderPos, const bool updateText = true);
 
     // audio/simulation thread stuff below
 
@@ -52,6 +57,7 @@ private:
     std::atomic_int inputSoundFrequency = static_cast<int>(Cylinder::startFrequency);
     std::atomic_int echoIterations = static_cast<int>(Pipe::startEchoIterations);
     std::atomic_int pipeLengthCm = static_cast<int>(Pipe::startPipeLengthPhysicalCm);
+    std::atomic_int pipeRadiusMm = static_cast<int>(Pipe::startPipeRadiusCm) * 10;
 
     // audio/simulation thread context funcs below
 

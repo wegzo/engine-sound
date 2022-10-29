@@ -73,17 +73,12 @@ void Cylinder::progressSimulation(SimT oldSampleCount, SimT newSampleCount)
 /////////////////////////////////////////////////////////////////////////////////
 
 
-Pipe::Pipe(Simulation& simulation, Cylinder& cylinder,
-    const SimT pipeRadius, const SimT pipeLengthPhysical) :
+Pipe::Pipe(Simulation& simulation, Cylinder& cylinder) :
     simulation(simulation),
-    cylinder(cylinder),
-    pipeRadius(pipeRadius),
-    pipeCrossSectionalArea(static_cast<SimT>(std::numbers::pi)* pipeRadius* pipeRadius)
+    cylinder(cylinder)
 {
-    assert(pipeLengthPhysical > 0.0);
-    assert(this->pipeRadius > 0.0);
-
-    this->setPipePhysicalLengthAndReset(pipeLengthPhysical);
+    this->setPipePhysicalLengthAndReset(startPipeLengthPhysicalCm / 100.0);
+    this->setPipeRadiusAndReset(startPipeRadiusCm / 100.0);
 }
 
 Wave Pipe::sumRadiatedWaves(const size_t sampleCount) const
@@ -184,7 +179,7 @@ void Pipe::prunePipeWaves()
 
     // TODO: probably the sound wave needs to lose its energy when it bounces in the pipe
 
-    // for now, just remove pipe waves older than 20 iterations
+    // for now, just remove pipe waves at a certain threshold
     while(this->pipeWaves.size() > this->echoIterations)
         this->pipeWaves.pop_back();
 }
@@ -212,14 +207,17 @@ std::pair<Wave, Wave> Pipe::splitToRadiatedAndReflectedWaves(const Wave& wave) c
             ((pressure2 - pressure1) / (-airAdiabaticFactor * pressure1)) /
             wave.getSampleDuration();*/
         // F = ma <=> a = F/m
-        const SimT flowAcceleration = (pressure2 - pressure1) / -airDensity;
+        const SimT flowAcceleration = 
+            (pressure2 - pressure1) 
+            / 
+            (Wave::getLength(1, wave.getSampleDuration()) * -airDensity);
         /*const SimT volumeFlow = this->pipeCrossSectionalArea * flowVelocity;*/
 
         // F = ma
         // F = air density * A * L * flowAcceleration
         // pA = air density * A * L * flowAcceleration <=>
         // p = (air density * A * L * flowAcceleration) / A <=>
-        // p = air density * L * flowAcceleration
+        // p = air density * L * flowAcceleration, L = endcorrectionfactor * pipe radius
         // Zrad = p/U = (air density * L * flowAcceleration) / volumeFlow
         // radP = Zrad*U
 
@@ -277,6 +275,18 @@ void Pipe::setPipePhysicalLengthAndReset(const SimT pipeLengthPhysical)
     this->pipeLengthPhysical = 
         this->userPipeLengthPhysical - Wave::getLength(1, 1.0 / this->simulation.samplingRate);
     this->pipeLength = this->pipeLengthPhysical + endCorrectionFactor * this->pipeRadius;
+
+    this->reset();
+}
+
+void Pipe::setPipeRadiusAndReset(const SimT pipeRadius)
+{
+    assert(pipeRadius > 0.0);
+
+    this->pipeRadius = pipeRadius;
+    this->pipeCrossSectionalArea = 
+        static_cast<SimT>(std::numbers::pi) * 
+        this->pipeRadius * this->pipeRadius;
 
     this->reset();
 }

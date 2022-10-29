@@ -32,7 +32,7 @@ bool populateAudioBuffer(
     assert(wave.samples.size() == bufferFrameCount * simSampleRateRatio);
 
     // find the peak value and normalize in relation to that
-    SimT peakValue = 0.0001;
+    SimT peakValue = 0.0001 * 1000.0;
     const SimT normalizedPeakValue = 0.2;
     /*for(auto val : wave.samples)
     {
@@ -70,23 +70,29 @@ LRESULT ControlDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     this->inputSoundFreqSlider.Attach(this->GetDlgItem(IDC_INPUTFREQSLIDER));
     this->echoIterationsSlider.Attach(this->GetDlgItem(IDC_ECHOITERATIONSSLIDER));
     this->pipeLengthSlider.Attach(this->GetDlgItem(IDC_PIPELENGTHSLIDER));
+    this->pipeRadiusSlider.Attach(this->GetDlgItem(IDC_PIPERADIUSSLIDER));
     this->inputSoundFreqEdit.Attach(this->GetDlgItem(IDC_INPUTFREQEDIT));
     this->echoIterationsEdit.Attach(this->GetDlgItem(IDC_ECHOITERATIONSEDIT));
     this->pipeLengthEdit.Attach(this->GetDlgItem(IDC_PIPELENGTHEDIT));
+    this->pipeRadiusEdit.Attach(this->GetDlgItem(IDC_PIPERADIUSEDIT2));
 
     this->startButton.EnableWindow(FALSE);
 
     this->inputSoundFreqSlider.SetRangeMin(200);
     this->inputSoundFreqSlider.SetRangeMax(1500);
-    this->setInputSoundFreqPos(static_cast<int>(this->inputSoundFrequency));
+    this->setInputSoundFreqPos(this->inputSoundFrequency);
 
     this->echoIterationsSlider.SetRangeMin(1);
     this->echoIterationsSlider.SetRangeMax(200);
-    this->setEchoIterationsPos(static_cast<int>(this->echoIterations));
+    this->setEchoIterationsPos(this->echoIterations);
 
     this->pipeLengthSlider.SetRangeMin(1);
     this->pipeLengthSlider.SetRangeMax(2500);
-    this->setPipeLengthPos(static_cast<int>(this->pipeLengthCm));
+    this->setPipeLengthPos(this->pipeLengthCm);
+
+    this->pipeRadiusSlider.SetRangeMin(1);
+    this->pipeRadiusSlider.SetRangeMax(300);
+    this->setPipeRadiusPos(this->pipeRadiusMm);
 
     return TRUE;
 }
@@ -114,26 +120,28 @@ LRESULT ControlDlg::OnBnClickedStopbutton(WORD /*wNotifyCode*/, WORD /*wID*/, HW
     return 0;
 }
 
-LRESULT ControlDlg::OnTrackBarScroll(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+LRESULT ControlDlg::OnTrackBarScroll(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
 {
+    const HWND ctrlHwnd = (HWND)lParam;
     const int pos = this->inputSoundFreqSlider.GetPos();
     const int pos2 = this->echoIterationsSlider.GetPos();
     const int pos3 = this->pipeLengthSlider.GetPos();
+    const int pos4 = this->pipeRadiusSlider.GetPos();
 
-    this->setInputSoundFreqPos(pos);
-    this->setEchoIterationsPos(pos2);
-    this->setPipeLengthPos(pos3);
+    if(ctrlHwnd == this->inputSoundFreqSlider)
+        this->setInputSoundFreqPos(pos);
+    if(ctrlHwnd == this->echoIterationsSlider)
+        this->setEchoIterationsPos(pos2);
+    if(ctrlHwnd == this->pipeLengthSlider)
+        this->setPipeLengthPos(pos3);
+    if(ctrlHwnd == this->pipeRadiusSlider)
+        this->setPipeRadiusPos(pos4);
 
     return 0;
 }
 
 LRESULT ControlDlg::OnEnChangeInputfreqedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-    // TODO:  If this is a RICHEDIT control, the control will not
-    // send this notification unless you override the __super::OnInitDialog()
-    // function and call CRichEditCtrl().SetEventMask()
-    // with the ENM_CHANGE flag ORed into the mask.
-
     CString str;
     this->inputSoundFreqEdit.GetWindowTextW(str);
 
@@ -148,11 +156,6 @@ LRESULT ControlDlg::OnEnChangeInputfreqedit(WORD /*wNotifyCode*/, WORD /*wID*/, 
 
 LRESULT ControlDlg::OnEnChangeEchoiterationsedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-    // TODO:  If this is a RICHEDIT control, the control will not
-    // send this notification unless you override the __super::OnInitDialog()
-    // function and call CRichEditCtrl().SetEventMask()
-    // with the ENM_CHANGE flag ORed into the mask.
-
     CString str;
     this->echoIterationsEdit.GetWindowTextW(str);
 
@@ -164,6 +167,36 @@ LRESULT ControlDlg::OnEnChangeEchoiterationsedit(WORD /*wNotifyCode*/, WORD /*wI
 
     return 0;
 }
+
+LRESULT ControlDlg::OnEnChangePipelengthedit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+    CString str;
+    this->pipeLengthEdit.GetWindowTextW(str);
+
+    wchar_t* end;
+    const int newPipeLength = std::wcstol(str, &end, 10);
+
+    if(newPipeLength != 0)
+        this->setPipeLengthPos(newPipeLength, false);
+
+    return 0;
+}
+
+
+LRESULT ControlDlg::OnEnChangePiperadiusedit2(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+    CString str;
+    this->pipeRadiusEdit.GetWindowTextW(str);
+
+    wchar_t* end;
+    const int newPipeRadius = std::wcstol(str, &end, 10);
+
+    if(newPipeRadius != 0)
+        this->setPipeRadiusPos(newPipeRadius, false);
+
+    return 0;
+}
+
 
 
 void ControlDlg::setInputSoundFreqPos(const int newSliderPos, const bool updateText)
@@ -202,6 +235,19 @@ void ControlDlg::setPipeLengthPos(const int newSliderPos, const bool updateText)
     {
         const std::wstring posStr = std::to_wstring(newSliderPos);
         this->pipeLengthEdit.SetWindowTextW(posStr.c_str());
+    }
+}
+
+void ControlDlg::setPipeRadiusPos(const int newSliderPos, const bool updateText)
+{
+    this->pipeRadiusMm = newSliderPos;
+
+    this->pipeRadiusSlider.SetPos(newSliderPos);
+
+    if(updateText)
+    {
+        const std::wstring posStr = std::to_wstring(newSliderPos);
+        this->pipeRadiusEdit.SetWindowTextW(posStr.c_str());
     }
 }
 
@@ -306,6 +352,7 @@ void ControlDlg::checkAndApplyParameters(Simulation& simulation)
     const int inputSoundFrequency = this->inputSoundFrequency;
     const int echoIterations = this->echoIterations;
     const int pipeLengthCm = this->pipeLengthCm;
+    const int pipeRadiusMm = this->pipeRadiusMm;
 
     if(generateInputSound)
         simulation.cylinder.start();
@@ -317,6 +364,8 @@ void ControlDlg::checkAndApplyParameters(Simulation& simulation)
         simulation.pipe.setEchoIterationsAndReset(echoIterations);
     if(std::lround(simulation.pipe.getPipePhysicalLength() * 100.0) != pipeLengthCm)
         simulation.pipe.setPipePhysicalLengthAndReset(pipeLengthCm / 100.0);
+    if(std::lround(simulation.pipe.getPipeRadius() * 1000.0) != pipeRadiusMm)
+        simulation.pipe.setPipeRadiusAndReset(pipeRadiusMm / 1000.0);
 }
 
 
