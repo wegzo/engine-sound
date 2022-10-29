@@ -57,7 +57,7 @@ private:
     std::atomic_int inputSoundFrequency = static_cast<int>(Cylinder::startFrequency);
     std::atomic_int echoIterations = static_cast<int>(Pipe::startEchoIterations);
     std::atomic_int pipeLengthCm = static_cast<int>(Pipe::startPipeLengthPhysicalCm);
-    std::atomic_int pipeRadiusMm = static_cast<int>(Pipe::startPipeRadiusCm) * 10;
+    std::atomic_int pipeRadiusMm = static_cast<int>(Pipe::startPipeRadiusCm * 10.0);
 
     // audio/simulation thread context funcs below
 

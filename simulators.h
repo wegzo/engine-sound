@@ -6,8 +6,8 @@
 class Simulation;
 
 constexpr SimT atmPressure = 101325.0;
-constexpr SimT airDensity = 1.2;
-constexpr SimT airAdiabaticFactor = 1.4;
+constexpr SimT airDensity = 1.225; // at 15 c
+//constexpr SimT airAdiabaticFactor = 1.4;
 constexpr SimT endCorrectionFactor = 0.6;
 
 // creates the initial sound wave
@@ -49,8 +49,8 @@ private:
 class Pipe
 {
 public:
-    static constexpr size_t startEchoIterations = 10;
-    static constexpr int startPipeLengthPhysicalCm = 20;
+    static constexpr size_t startEchoIterations = 100;
+    static constexpr SimT startPipeLengthPhysicalCm = 50;
     static constexpr SimT startPipeRadiusCm = 1;
 public:
     std::vector<Wave> radiatedWaves;
@@ -61,7 +61,7 @@ public:
     void setEchoIterationsAndReset(const size_t echoIterations);
     size_t getEchoIterations() const { return this->echoIterations; }
     void setPipePhysicalLengthAndReset(const SimT pipeLengthPhysical);
-    SimT getPipePhysicalLength() const { return this->userPipeLengthPhysical; }
+    SimT getPipePhysicalLength() const { return this->pipeLengthPhysical; }
     void setPipeRadiusAndReset(const SimT pipeRadius);
     SimT getPipeRadius() const { return this->pipeRadius; }
 
@@ -77,11 +77,9 @@ private:
     size_t radiatedSampleCount = 0;
     size_t echoIterations = startEchoIterations;
 
-    SimT userPipeLengthPhysical;
     SimT pipeLengthPhysical;
     SimT pipeLength;
     SimT pipeRadius;
-    SimT pipeCrossSectionalArea;
 
     void progressPipeWave(const std::list<Wave>::iterator waveIt);
     void prunePipeWaves();

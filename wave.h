@@ -5,7 +5,7 @@
 class Simulation;
 using SimT = double;
 
-constexpr SimT waveSpeed = 343.0; // speed of sound in air
+constexpr SimT waveSpeed = 340.6520; // speed of sound in air at 15 c
 
 class Wave
 {
