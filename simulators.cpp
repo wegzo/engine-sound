@@ -76,8 +76,8 @@ void Cylinder::progressSimulation(SimT oldSampleCount, SimT newSampleCount)
 Pipe::Pipe(Simulation& simulation, Cylinder& cylinder) :
     simulation(simulation),
     cylinder(cylinder),
-    pipeLengthPhysical(startPipeLengthPhysicalCm),
-    pipeRadius(startPipeRadiusCm)
+    pipeLengthPhysical(startPipeLengthPhysicalCm / 100.0),
+    pipeRadius(startPipeRadiusCm / 100.0)
 {
     // pipe length depends on pipe radius so the order is important
     this->setPipeRadiusAndReset(startPipeRadiusCm / 100.0);
@@ -153,7 +153,7 @@ void Pipe::progressPipeWave(const std::list<Wave>::iterator waveIt)
 
         const SimT straddlingLength = exceedingLength -
             Wave::getLength(sampleCount, 1.0 / this->simulation.samplingRate);
-        assert(straddlingLength < Wave::getLength(1, 1.0 / this->simulation.samplingRate));
+        assert(straddlingLength < Wave::getLength(1.0, 1.0 / this->simulation.samplingRate));
         assert(straddlingLength >= 0);
 
         reflectedWave.position = straddlingLength;
@@ -161,17 +161,17 @@ void Pipe::progressPipeWave(const std::list<Wave>::iterator waveIt)
         this->addRadiatedWave(std::move(radiatedWave));
         this->addPipeWave(std::move(reflectedWave), ++std::list<Wave>::iterator{waveIt});
     }
-    else if(!waveIt->leftToRightDirection && sampleCount >= 1)
+    else if(!waveIt->leftToRightDirection && sampleCount >= 2)
     {
         // note that the zero position is now at the right end of the pipe
         // and grows to the left direction;
         // handle reflection
-        Wave waveToBeReflected = waveIt->cutWaveBySampleCount(sampleCount);
+        Wave waveToBeReflected = waveIt->cutWaveBySampleCount(sampleCount - 1);
         Wave reflectedWave{this->simulation, std::move(waveToBeReflected.samples)};
 
         const SimT straddlingLength = exceedingLength -
             Wave::getLength(sampleCount, 1.0 / this->simulation.samplingRate);
-        assert(straddlingLength < Wave::getLength(1, 1.0 / this->simulation.samplingRate));
+        assert(straddlingLength < Wave::getLength(1.0, 1.0 / this->simulation.samplingRate));
         assert(straddlingLength >= 0);
 
         reflectedWave.position = straddlingLength;
@@ -217,7 +217,7 @@ std::pair<Wave, Wave> Pipe::splitToRadiatedAndReflectedWaves(const Wave& wave) c
         const SimT flowAcceleration = 
             (pressure2 - pressure1) 
             / 
-            (Wave::getLength(1, wave.getSampleDuration()) * -airDensity);
+            (Wave::getLength(1.0, wave.getSampleDuration()) * -airDensity);
         /*const SimT volumeFlow = this->pipeCrossSectionalArea * flowVelocity;*/
 
         // F = ma
@@ -257,6 +257,8 @@ void Pipe::addPipeWave(Wave&& pipeWave, const std::list<Wave>::iterator pos)
     else
     {
         assert(pos->leftToRightDirection == pipeWave.leftToRightDirection);
+
+        pos->position = pipeWave.position;
         *pos += pipeWave;
     }
 }
@@ -281,7 +283,7 @@ void Pipe::setPipePhysicalLengthAndReset(const SimT pipeLengthPhysical)
     this->pipeLengthPhysical = pipeLengthPhysical;
     this->pipeLength = 
         this->pipeLengthPhysical + endCorrectionFactor * this->pipeRadius - 
-        Wave::getLength(1, 1.0 / this->simulation.samplingRate);
+        Wave::getLength(1.0, 1.0 / this->simulation.samplingRate);
 
     this->reset();
 }

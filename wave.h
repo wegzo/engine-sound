@@ -30,6 +30,7 @@ public:
         const bool leftToRightDirection = true);
 
     SimT getLength() const;
+    static SimT getLength(const SimT sampleCount, const SimT sampleDuration);
     static SimT getLength(const size_t sampleCount, const SimT sampleDuration);
     SimT getSampleDuration() const;
     size_t getSampleCount() const {

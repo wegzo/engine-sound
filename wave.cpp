@@ -32,6 +32,11 @@ SimT Wave::getLength() const
     return getLength(this->samples.size(), this->getSampleDuration());
 }
 
+SimT Wave::getLength(const SimT sampleCount, const SimT sampleDuration)
+{
+    return sampleCount * waveSpeed * sampleDuration;
+}
+
 SimT Wave::getLength(const size_t sampleCount, const SimT sampleDuration)
 {
     return sampleCount * waveSpeed * sampleDuration;
